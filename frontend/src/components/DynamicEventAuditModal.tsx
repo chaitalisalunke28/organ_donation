@@ -77,7 +77,7 @@ export const DynamicEventAuditModal: React.FC<DynamicEventAuditModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white flex justify-between items-center">
+        <div className="px-6 py-5 bg-gray-900 text-white flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-slate-800 rounded-xl border border-slate-700">
               <History className="w-6 h-6 text-teal-300" />

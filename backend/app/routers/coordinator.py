@@ -863,9 +863,9 @@ def coordinator_notifications(db: Session = Depends(get_db), current_user=Depend
 def view_medical_report_coord(report_id: int, db: Session = Depends(get_db), current_user=Depends(require_coord)):
     import os
     import mimetypes
+    from app.core.config import resolve_upload_path
     from fastapi.responses import Response
     from app.models.allocation import MedicalReport
-    from app.services.pdf_service import generate_sample_medical_report_pdf
 
     report = db.query(MedicalReport).filter(MedicalReport.id == report_id).first()
     if not report:
@@ -875,28 +875,22 @@ def view_medical_report_coord(report_id: int, db: Session = Depends(get_db), cur
     if not patient:
         raise HTTPException(status_code=404, detail="Associated patient not found")
 
-    media_type = "application/pdf"
-    if os.path.exists(report.file_path) and os.path.getsize(report.file_path) > 100:
-        with open(report.file_path, "rb") as f:
-            content = f.read()
-        media_type = mimetypes.guess_type(report.file_path)[0] or "application/pdf"
-    else:
-        hospital_name = patient.hospital.name if patient.hospital else "Accredited Medical Center"
-        bg = patient.blood_group.value if hasattr(patient.blood_group, 'value') else patient.blood_group
-        content = generate_sample_medical_report_pdf(
-            patient_name=patient.name,
-            patient_uid=patient.patient_uid or f"PT-{patient.id}",
-            report_type=report.report_type.value if hasattr(report.report_type, 'value') else str(report.report_type),
-            hospital_name=hospital_name,
-            blood_group=bg or "O+"
+    path = resolve_upload_path(report.file_path)
+    if not os.path.isfile(path):
+        raise HTTPException(
+            status_code=404,
+            detail="The file for this report is missing on the server. Please upload it again.",
         )
+    with open(path, "rb") as f:
+        content = f.read()
+    media_type = mimetypes.guess_type(path)[0] or "application/pdf"
+    # Header values must be latin-1; keep the name ASCII-safe
+    filename = (report.original_filename or os.path.basename(path)).encode("ascii", "ignore").decode().replace('"', "")
 
     return Response(
         content=content,
         media_type=media_type,
-        headers={
-            "Content-Disposition": f"inline; filename=Report_{report.report_type}_{patient.patient_uid or patient.id}.pdf"
-        }
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 

@@ -32,7 +32,7 @@ export default function DocumentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 bg-gray-950/50 flex items-center justify-center p-3 sm:p-6">
       <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-gray-900/10">
         {/* Modal Header */}
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">

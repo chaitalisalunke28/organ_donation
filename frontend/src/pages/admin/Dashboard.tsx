@@ -9,8 +9,7 @@ import {
   HeartPulse,
   Plus,
   ArrowRight,
-  TrendingUp,
-  AlertTriangle,
+    AlertTriangle,
 } from 'lucide-react';
 import { getAdminDashboard } from '../../api';
 import PageHeader from '../../components/PageHeader';
@@ -128,11 +127,6 @@ export default function AdminDashboard() {
       <PageHeader
         title="Network overview"
         description="Hospitals, donors and receivers across the transplant network."
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-2xs font-semibold text-gray-600">
-            <TrendingUp className="h-3 w-3" /> Refreshes every 60s
-          </span>
-        }
         actions={
           <Link to="/admin/hospitals/add" className="btn-primary">
             <Plus className="h-4 w-4" /> Register hospital

@@ -95,16 +95,7 @@ export default function CoordinatorDashboard() {
     <div className="space-y-8">
       <PageHeader
         title="Coordination overview"
-        description="Match available organs to eligible recipients across the network, manage sequential offers and track every allocation to completion."
-        eyebrow={
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            Live · refreshes every 10s
-          </span>
-        }
+        description="Match available organs to eligible recipients, manage offers and track each allocation to completion. Figures refresh every 10 seconds."
         actions={
           <Link to="/coordinator/matching" className="btn-primary">
             <GitMerge className="h-4 w-4" /> Start organ matching
@@ -158,10 +149,10 @@ export default function CoordinatorDashboard() {
               <li key={s.step} className="relative">
                 <Link
                   to={s.to}
-                  className="group flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-teal-300 hover:shadow-raised"
+                  className="group flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:bg-gray-50/60"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
                       {s.icon}
                     </span>
                     <span className="font-mono text-2xs font-semibold text-gray-400">0{s.step}</span>
@@ -200,9 +191,10 @@ export default function CoordinatorDashboard() {
       <div className="flex gap-3 rounded-(--radius-card) border border-gray-200 bg-white p-4 text-xs leading-relaxed text-gray-600">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
         <p>
-          <span className="font-semibold text-gray-900">Decision support only.</span> Rankings come from an academic
-          multi-factor model (ABO compatibility hard filter, urgency and waiting time). Final allocation is authorised
-          by the certified clinical coordinator.
+          <span className="font-semibold text-gray-900">Decision support only.</span> Candidates are first screened
+          by hard rules (organ type, eligibility, ABO blood group, antibodies and crossmatch), then ranked by a points
+          score (urgency, waiting/dialysis time, HLA match, blood-group match and distance). Final allocation is
+          authorised by the clinical coordinator.
         </p>
       </div>
     </div>

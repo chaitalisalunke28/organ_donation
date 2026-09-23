@@ -15,7 +15,7 @@ from app.models.enums import (UserRole, PatientType, EligibilityStatus, OrganTyp
                                OrganAvailabilityStatus, OfferStatus, AllocationStatus, ReportType)
 from app.schemas.patient import PatientCreate, PatientOut, OrganCreate, OrganOut
 from app.core.security import require_role
-from app.core.config import settings
+from app.core.config import settings, resolve_upload_path
 from app.services.eligibility import run_eligibility_check
 
 router = APIRouter(prefix="/hospital", tags=["Hospital"])
@@ -28,6 +28,17 @@ def get_hospital_id(current_user) -> int:
     if not current_user.hospital_id:
         raise HTTPException(status_code=400, detail="User not associated with a hospital")
     return current_user.hospital_id
+
+
+def get_own_patient(patient_id: int, db: Session, current_user) -> Patient:
+    """Fetch a patient registered at the current user's hospital, else 404."""
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.hospital_id == get_hospital_id(current_user),
+    ).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient
 
 
 # ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -176,61 +187,6 @@ def add_patient(data: PatientCreate, db: Session = Depends(get_db), current_user
     db.commit()
     db.refresh(patient)
 
-    # Automatically generate accredited initial clinical PDF reports on disk
-    try:
-        from app.services.pdf_service import generate_sample_medical_report_pdf
-        from app.core.config import settings
-        upload_dir = os.path.join(settings.UPLOAD_DIR, str(patient.id))
-        os.makedirs(upload_dir, exist_ok=True)
-
-        hospital_name = patient.hospital.name if patient.hospital else "Accredited Medical Center"
-        bg_str = patient.blood_group.value if hasattr(patient.blood_group, 'value') else str(patient.blood_group)
-
-        # 1. Blood Test PDF
-        pdf_bytes_blood = generate_sample_medical_report_pdf(
-            patient_name=patient.name,
-            patient_uid=patient.patient_uid or f"PT-{patient.id}",
-            report_type="BLOOD_TEST",
-            hospital_name=hospital_name,
-            blood_group=bg_str or "O+"
-        )
-        blood_path = os.path.join(upload_dir, f"blood_test_{patient.patient_uid or patient.id}.pdf")
-        with open(blood_path, "wb") as f:
-            f.write(pdf_bytes_blood)
-
-        rep_blood = MedicalReport(
-            patient_id=patient.id,
-            report_type=ReportType.BLOOD_TEST if hasattr(ReportType, 'BLOOD_TEST') else "BLOOD_TEST",
-            file_path=blood_path,
-            original_filename=f"Clinical_Blood_Report_{patient.patient_uid or patient.id}.pdf",
-            verification_status="VERIFIED",
-        )
-        db.add(rep_blood)
-
-        # 2. Medical Examination / Clinical History PDF
-        pdf_bytes_exam = generate_sample_medical_report_pdf(
-            patient_name=patient.name,
-            patient_uid=patient.patient_uid or f"PT-{patient.id}",
-            report_type="MEDICAL_EXAMINATION",
-            hospital_name=hospital_name,
-            blood_group=bg_str or "O+"
-        )
-        exam_path = os.path.join(upload_dir, f"medical_exam_{patient.patient_uid or patient.id}.pdf")
-        with open(exam_path, "wb") as f:
-            f.write(pdf_bytes_exam)
-
-        rep_exam = MedicalReport(
-            patient_id=patient.id,
-            report_type=ReportType.MEDICAL_EXAMINATION,
-            file_path=exam_path,
-            original_filename=f"Clinical_Exam_Report_{patient.patient_uid or patient.id}.pdf",
-            verification_status="VERIFIED",
-        )
-        db.add(rep_exam)
-        db.commit()
-    except Exception as e:
-        print(f"Note: Auto report generation error: {e}")
-
     result = PatientOut.model_validate(patient)
     result.hospital_name = patient.hospital.name if patient.hospital else None
     return result
@@ -260,9 +216,7 @@ def list_patients(
 
 @router.get("/patients/{patient_id}", response_model=PatientOut)
 def get_patient(patient_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
     out = PatientOut.model_validate(patient)
     out.hospital_name = patient.hospital.name if patient.hospital else None
     return out
@@ -272,7 +226,11 @@ def get_patient(patient_id: int, db: Session = Depends(get_db), current_user=Dep
 
 @router.post("/patients/{patient_id}/organs", response_model=OrganOut, status_code=status.HTTP_201_CREATED)
 def add_organ(patient_id: int, data: OrganCreate, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.patient_type == PatientType.DONOR).first()
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.patient_type == PatientType.DONOR,
+        Patient.hospital_id == get_hospital_id(current_user),
+    ).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Donor patient not found")
 
@@ -314,9 +272,7 @@ def add_organ(patient_id: int, data: OrganCreate, db: Session = Depends(get_db),
 
 @router.get("/patients/{patient_id}/organs", response_model=List[OrganOut])
 def list_patient_organs(patient_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
     organs = db.query(Organ).filter(Organ.donor_patient_id == patient_id).all()
     result = []
     for o in organs:
@@ -378,9 +334,7 @@ async def upload_report(
     db: Session = Depends(get_db),
     current_user=Depends(require_hospital)
 ):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
 
     # Save file
     upload_dir = os.path.join(settings.UPLOAD_DIR, str(patient_id))
@@ -439,9 +393,7 @@ async def upload_report(
 
 @router.get("/patients/{patient_id}/reports")
 def list_reports(patient_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
     reports = db.query(MedicalReport).filter(MedicalReport.patient_id == patient_id).all()
     return [
         {
@@ -459,17 +411,13 @@ def list_reports(patient_id: int, db: Session = Depends(get_db), current_user=De
 
 @router.post("/patients/{patient_id}/check-eligibility")
 def check_eligibility(patient_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
     return run_eligibility_check(patient_id, db)
 
 
 @router.post("/patients/{patient_id}/verify-eligibility")
 def verify_patient_eligibility(patient_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = get_own_patient(patient_id, db, current_user)
 
     patient.eligibility_status = EligibilityStatus.ELIGIBLE
     patient.verification_status = "VERIFIED"
@@ -703,40 +651,29 @@ def mark_read(notif_id: int, db: Session = Depends(get_db), current_user=Depends
 @router.get("/reports/{report_id}/pdf")
 def view_medical_report(report_id: int, db: Session = Depends(get_db), current_user=Depends(require_hospital)):
     from fastapi.responses import Response
-    from app.services.pdf_service import generate_sample_medical_report_pdf
 
     report = db.query(MedicalReport).filter(MedicalReport.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Medical report not found")
 
-    patient = db.query(Patient).filter(Patient.id == report.patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Associated patient not found")
+    get_own_patient(report.patient_id, db, current_user)
 
-    media_type = "application/pdf"
-    # If physical file exists on disk and is a valid file, read it
-    if os.path.exists(report.file_path) and os.path.getsize(report.file_path) > 100:
-        with open(report.file_path, "rb") as f:
-            content = f.read()
-        media_type = mimetypes.guess_type(report.file_path)[0] or "application/pdf"
-    else:
-        # Generate genuine PDF report on the fly
-        hospital_name = patient.hospital.name if patient.hospital else "Accredited Medical Center"
-        bg = patient.blood_group.value if hasattr(patient.blood_group, 'value') else patient.blood_group
-        content = generate_sample_medical_report_pdf(
-            patient_name=patient.name,
-            patient_uid=patient.patient_uid or f"PT-{patient.id}",
-            report_type=report.report_type.value if hasattr(report.report_type, 'value') else str(report.report_type),
-            hospital_name=hospital_name,
-            blood_group=bg or "O+"
+    path = resolve_upload_path(report.file_path)
+    if not os.path.isfile(path):
+        raise HTTPException(
+            status_code=404,
+            detail="The file for this report is missing on the server. Please upload it again.",
         )
+    with open(path, "rb") as f:
+        content = f.read()
+    media_type = mimetypes.guess_type(path)[0] or "application/pdf"
+    # Header values must be latin-1; keep the name ASCII-safe
+    filename = (report.original_filename or os.path.basename(path)).encode("ascii", "ignore").decode().replace('"', "")
 
     return Response(
         content=content,
         media_type=media_type,
-        headers={
-            "Content-Disposition": f"inline; filename=Report_{report.report_type}_{patient.patient_uid or patient.id}.pdf"
-        }
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 

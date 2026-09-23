@@ -100,62 +100,36 @@ export default function Login() {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Brand panel */}
-      <div className="relative hidden w-[46%] max-w-[640px] flex-col justify-between overflow-hidden bg-ink-950 p-12 text-white lg:flex">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-teal-600/30 blur-[120px]" />
-          <div className="absolute -bottom-40 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-emerald-500/20 blur-[120px]" />
-          <svg className="absolute inset-0 h-full w-full opacity-[0.07]" aria-hidden="true">
-            <defs>
-              <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-                <path d="M32 0H0V32" fill="none" stroke="white" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+      <div className="hidden w-[44%] max-w-[600px] flex-col justify-between bg-teal-800 p-12 text-white lg:flex">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
+            <Heart className="h-[18px] w-[18px] fill-white text-white" />
+          </div>
+          <p className="font-display text-lg font-bold">OrganConnect</p>
         </div>
 
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-teal-700 shadow-lg shadow-teal-900/50">
-            <Heart className="h-5 w-5 fill-white text-white" />
-          </div>
-          <div className="leading-tight">
-            <p className="font-display text-lg font-bold">OrganConnect</p>
-            <p className="text-xs text-gray-400">Transplant Coordination Network</p>
-          </div>
-        </div>
-
-        <div className="relative space-y-8">
+        <div className="space-y-8">
           <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-gray-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Every organ, matched with care
-            </p>
-            <h1 className="font-display text-4xl font-bold leading-[1.15] tracking-tight text-white xl:text-[2.75rem]">
-              From donor to recipient,
-              <br />
-              <span className="bg-gradient-to-r from-teal-300 to-emerald-300 bg-clip-text text-transparent">
-                one coordinated flow.
-              </span>
+            <h1 className="font-display text-[2.1rem] font-bold leading-tight tracking-tight text-white">
+              Organ allocation and transplant coordination
             </h1>
-            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-gray-400">
+            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-teal-100">
               Register patients, verify clinical evidence, rank compatible recipients and track every offer
               across the hospital network.
             </p>
           </div>
 
-          <ul className="space-y-3">
+          <ul className="space-y-3 border-t border-white/15 pt-6">
             {FEATURES.map((f) => (
-              <li key={f.text} className="flex items-center gap-3 text-sm text-gray-300">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-teal-300 ring-1 ring-white/10">
-                  {f.icon}
-                </span>
+              <li key={f.text} className="flex items-center gap-3 text-sm text-teal-50">
+                <span className="text-teal-200">{f.icon}</span>
                 {f.text}
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-gray-500">
+        <p className="text-xs text-teal-200/80">
           &copy; {new Date().getFullYear()} OrganConnect · EDI Project
         </p>
       </div>
@@ -165,7 +139,7 @@ export default function Login() {
         <div className="w-full max-w-[420px]">
           {/* Mobile brand */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700">
               <Heart className="h-5 w-5 fill-white text-white" />
             </div>
             <p className="font-display text-lg font-bold text-gray-900">OrganConnect</p>
@@ -257,8 +231,8 @@ export default function Login() {
                       setPassword(acc.password);
                       setError('');
                     }}
-                    className={`rounded-xl border bg-white p-3 text-left transition-all hover:shadow-raised ${
-                      selected ? 'border-teal-500 ring-4 ring-teal-500/15' : 'border-gray-200'
+                    className={`rounded-xl border bg-white p-3 text-left transition-all hover:border-gray-300 ${
+                      selected ? 'border-teal-600 ring-1 ring-teal-600' : 'border-gray-200'
                     }`}
                   >
                     <span

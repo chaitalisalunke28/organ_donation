@@ -87,7 +87,7 @@ export default function HospitalDashboard() {
       {active_allocation_requests > 0 && (
         <Link
           to="/hospital/allocation-requests"
-          className="flex items-center gap-4 rounded-(--radius-card) border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 transition-shadow hover:shadow-raised"
+          className="flex items-center gap-4 rounded-(--radius-card) border border-amber-200 bg-amber-50 p-4 transition-colors hover:border-amber-300"
         >
           <span className="icon-tile bg-amber-100 text-amber-700">
             <AlertCircle className="h-5 w-5" />

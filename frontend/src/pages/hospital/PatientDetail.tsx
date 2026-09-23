@@ -6,7 +6,6 @@ import {
   Heart,
   Activity,
   UploadCloud,
-  FileCheck2,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -43,7 +42,7 @@ const REPORT_TYPES = [
   { value: 'OTHER', label: 'Other supporting document' },
 ];
 
-// Mirrors DONOR/RECEIVER_REQUIRED_REPORT_TYPES in backend/app/services/eligibility.py
+// The core reports listed in DONOR/RECEIVER_REQUIRED_REPORT_TYPES (backend/app/services/eligibility.py)
 const REQUIRED_REPORTS = [
   { type: 'BLOOD_TEST', label: 'Blood test report' },
   { type: 'MEDICAL_EXAMINATION', label: 'Medical examination report' },
@@ -60,6 +59,7 @@ export default function PatientDetail() {
   // PDF Preview State
   const [viewPdfUrl, setViewPdfUrl] = useState<string | null>(null);
   const [viewPdfTitle, setViewPdfTitle] = useState<string>('Clinical Document');
+  const [viewPdfFilename, setViewPdfFilename] = useState<string>('report.pdf');
 
   // Report upload state
   const [reportType, setReportType] = useState('BLOOD_TEST');
@@ -189,8 +189,17 @@ export default function PatientDetail() {
       const url = await viewHospitalReportPdf(r.id);
       setViewPdfUrl(url);
       setViewPdfTitle(`${formatType(r.report_type)} · ${patient.name}`);
-    } catch {
-      toast.error('Could not open this report. Please try again.');
+      setViewPdfFilename(r.original_filename || 'report.pdf');
+    } catch (err: any) {
+      // Blob requests return the error body as a Blob, so read the detail out of it
+      let detail = 'Could not open this report. Please try again.';
+      try {
+        const body = err?.response?.data;
+        if (body instanceof Blob) detail = JSON.parse(await body.text()).detail || detail;
+      } catch {
+        /* keep the generic message */
+      }
+      toast.error(detail);
     }
   };
 
@@ -450,7 +459,7 @@ export default function PatientDetail() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-gray-900">Verification</h2>
               <span className="text-xs font-semibold text-gray-500">
-                {checklistDone}/{checklist.length} required
+                {checklistDone} of {checklist.length} uploaded
               </span>
             </div>
 
@@ -638,7 +647,7 @@ export default function PatientDetail() {
         }}
         title={viewPdfTitle}
         pdfBlobUrl={viewPdfUrl}
-        downloadFilename={`${viewPdfTitle.replace(/[^\w]+/g, '_')}.pdf`}
+        downloadFilename={viewPdfFilename}
       />
     </div>
   );

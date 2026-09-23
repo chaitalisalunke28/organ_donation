@@ -23,7 +23,6 @@ import {
   ChevronDown,
   ChevronRight,
   PlusCircle,
-  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -186,18 +185,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     .toUpperCase();
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-ink-950 text-gray-300">
+    <div className="flex h-full flex-col border-r border-gray-200 bg-white">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-teal-700 shadow-lg shadow-teal-900/40">
-          <Heart size={18} className="fill-white text-white" />
+      <div className="flex h-16 items-center gap-2.5 border-b border-gray-100 px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700">
+          <Heart size={16} className="fill-white text-white" />
         </div>
         <div className="leading-tight">
-          <p className="font-display text-[15px] font-bold tracking-tight text-white">OrganConnect</p>
-          <p className="text-2xs font-medium text-gray-400">Transplant Network</p>
+          <p className="font-display text-[15px] font-bold tracking-tight text-gray-900">OrganConnect</p>
+          <p className="text-2xs text-gray-500">Transplant Network</p>
         </div>
         <button
-          className="ml-auto rounded-lg p-1.5 text-gray-400 hover:bg-white/10 hover:text-white md:hidden"
+          className="ml-auto rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 md:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-label="Close menu"
         >
@@ -206,13 +205,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-6 pt-3 [scrollbar-color:rgb(255_255_255/0.15)_transparent]">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6 pt-4">
         {groups.map((group) => (
           <div key={group.title}>
-            <p className="mb-1.5 px-3 text-3xs font-bold uppercase tracking-[0.12em] text-gray-500">
-              {group.title}
-            </p>
-            <div className="space-y-0.5">
+            <p className="mb-1 px-3 text-2xs font-semibold text-gray-400">{group.title}</p>
+            <div className="space-y-px">
               {group.items.map((item) => {
                 const active = activeItem?.path === item.path;
                 return (
@@ -220,14 +217,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     key={item.path}
                     to={item.path}
                     aria-current={active ? 'page' : undefined}
-                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
-                      active ? 'bg-white/[0.08] text-white' : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-100'
+                    className={`flex items-center gap-3 rounded-md px-3 py-[7px] text-[13px] transition-colors ${
+                      active
+                        ? 'bg-teal-50 font-semibold text-teal-800'
+                        : 'font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                   >
-                    {active && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-teal-400" />}
-                    <span className={active ? 'text-teal-300' : 'text-gray-500 group-hover:text-gray-300'}>
-                      {item.icon}
-                    </span>
+                    <span className={active ? 'text-teal-700' : 'text-gray-400'}>{item.icon}</span>
                     <span className="truncate">{item.label}</span>
                   </Link>
                 );
@@ -238,11 +234,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-white/[0.06] p-3">
-        <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2.5 text-2xs text-gray-400">
-          <ShieldCheck size={14} className="shrink-0 text-emerald-400" />
-          <span>NOTTO-aligned · Academic prototype</span>
-        </div>
+      <div className="border-t border-gray-100 px-5 py-3 text-2xs leading-relaxed text-gray-400">
+        Academic prototype · synthetic data
       </div>
     </div>
   );
@@ -255,14 +248,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-gray-950/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute inset-0 bg-gray-950/40" onClick={() => setSidebarOpen(false)} />
           <aside className="absolute inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl">{sidebar}</aside>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-gray-200/80 bg-white/80 px-4 backdrop-blur md:px-8">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               className="-ml-1 rounded-lg p-2 text-gray-500 hover:bg-gray-100 md:hidden"
@@ -289,7 +282,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 text-xs font-bold text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700">
                 {initials}
               </span>
               <span className="hidden text-left leading-tight sm:block">

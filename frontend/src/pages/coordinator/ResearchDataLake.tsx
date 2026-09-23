@@ -68,7 +68,7 @@ export default function ResearchDataLake() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-teal-700 flex items-center justify-center text-white">
               <Database className="w-5 h-5" />
             </div>
             <div>
@@ -110,7 +110,7 @@ export default function ResearchDataLake() {
 
       {/* Dataset Metadata Box */}
       {metadata && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-900 to-slate-900 text-white shadow-md space-y-3">
+        <div className="p-4 rounded-xl bg-gray-900 text-white shadow-md space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-indigo-800/60">
             <div>
               <span className="text-2xs font-mono uppercase tracking-widest text-indigo-300">

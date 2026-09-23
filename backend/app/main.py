@@ -1,7 +1,6 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
 from app.models import *  # noqa: Import all models so Base knows about them
 from app.routers import auth, admin, hospital, coordinator
@@ -25,9 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static file serving for uploads
+# Uploaded medical reports are only served through the authenticated
+# /hospital/reports and /coordinator/reports endpoints, never statically
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # Routers
 app.include_router(auth.router)

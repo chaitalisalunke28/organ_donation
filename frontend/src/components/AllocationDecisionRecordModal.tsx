@@ -51,7 +51,7 @@ export const AllocationDecisionRecordModal: React.FC<AllocationDecisionRecordMod
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 print:border-none print:shadow-none">
         {/* Modal Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 text-white flex justify-between items-center print:hidden">
+        <div className="px-6 py-5 bg-gray-900 text-white flex justify-between items-center print:hidden">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-teal-800/50 rounded-xl border border-teal-500/30">
               <FileCheck className="w-6 h-6 text-teal-300" />
@@ -98,7 +98,7 @@ export const AllocationDecisionRecordModal: React.FC<AllocationDecisionRecordMod
           ) : (
             <div className="space-y-6">
               {/* Document Official Banner */}
-              <div className="p-5 bg-gradient-to-r from-teal-50/90 via-emerald-50/60 to-slate-50 rounded-2xl border border-teal-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="p-5 bg-teal-50/60 rounded-2xl border border-teal-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <div className="text-[10px] font-extrabold uppercase tracking-widest text-teal-800">
                     NATIONAL ORGAN ALLOCATION & TRANSPLANT REGISTRY
