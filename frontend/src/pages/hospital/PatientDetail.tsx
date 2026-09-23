@@ -12,6 +12,11 @@ import {
   CheckCircle2,
   Plus,
   ShieldCheck,
+  Hash,
+  Droplet,
+  Building2,
+  Eye,
+  Circle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -28,6 +33,24 @@ import StatusBadge from '../../components/StatusBadge';
 import OrganBadge from '../../components/OrganBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import DocumentModal from '../../components/DocumentModal';
+
+const REPORT_TYPES = [
+  { value: 'BLOOD_TEST', label: 'Blood test' },
+  { value: 'MEDICAL_EXAMINATION', label: 'Medical examination' },
+  { value: 'INFECTIOUS_DISEASE_SCREENING', label: 'Infectious disease screening' },
+  { value: 'ORGAN_ASSESSMENT', label: 'Organ assessment' },
+  { value: 'COMPATIBILITY_TEST', label: 'Compatibility / HLA' },
+  { value: 'OTHER', label: 'Other supporting document' },
+];
+
+// Mirrors DONOR/RECEIVER_REQUIRED_REPORT_TYPES in backend/app/services/eligibility.py
+const REQUIRED_REPORTS = [
+  { type: 'BLOOD_TEST', label: 'Blood test report' },
+  { type: 'MEDICAL_EXAMINATION', label: 'Medical examination report' },
+];
+
+const formatType = (t?: string) =>
+  REPORT_TYPES.find((r) => r.value === t)?.label ?? (t ? t.replace(/_/g, ' ').toLowerCase() : 'Report');
 
 export default function PatientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -144,7 +167,7 @@ export default function PatientDetail() {
     return (
       <div className="card text-center py-12">
         <p className="text-red-600 font-medium">Patient record not found.</p>
-        <Link to="/hospital/dashboard" className="btn-secondary mt-4 inline-flex items-center gap-1.5">
+        <Link to="/hospital/dashboard" className="btn-secondary mt-4">
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
@@ -153,478 +176,460 @@ export default function PatientDetail() {
 
   const isDonor = patient.patient_type === 'DONOR';
   const isEligible = patient.eligibility_status === 'ELIGIBLE';
+  const bmi =
+    patient.height_cm && patient.weight_kg
+      ? +(patient.weight_kg / Math.pow(patient.height_cm / 100, 2)).toFixed(1)
+      : null;
+  const uploadedTypes = new Set(reports.map((r: any) => r.report_type));
+  const checklist = REQUIRED_REPORTS.map((req) => ({ ...req, done: uploadedTypes.has(req.type) }));
+  const checklistDone = checklist.filter((c) => c.done).length;
+
+  const openReport = async (r: any) => {
+    try {
+      const url = await viewHospitalReportPdf(r.id);
+      setViewPdfUrl(url);
+      setViewPdfTitle(`${formatType(r.report_type)} · ${patient.name}`);
+    } catch {
+      toast.error('Could not open this report. Please try again.');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      {/* Header */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
           <Link
             to={isDonor ? '/hospital/donors' : '/hospital/receivers'}
-            className="btn-secondary p-2 rounded-lg text-slate-600"
+            className="btn-secondary mt-1 h-9 w-9 shrink-0 p-0"
+            aria-label="Back"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{patient.name}</h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                isDonor ? 'bg-rose-100 text-rose-800' : 'bg-teal-100 text-teal-800'
-              }`}>
-                {patient.patient_type}
+          <div
+            className={`hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl sm:flex ${
+              isDonor ? 'bg-rose-50 text-rose-600' : 'bg-teal-50 text-teal-600'
+            }`}
+          >
+            {isDonor ? <Heart className="h-6 w-6" /> : <Activity className="h-6 w-6" />}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="page-title truncate">{patient.name}</h1>
+              <span
+                className={`rounded-md px-2 py-0.5 text-2xs font-bold uppercase tracking-wider ring-1 ring-inset ${
+                  isDonor ? 'bg-rose-50 text-rose-700 ring-rose-600/20' : 'bg-teal-50 text-teal-700 ring-teal-600/20'
+                }`}
+              >
+                {isDonor ? 'Donor' : 'Receiver'}
               </span>
               <StatusBadge status={patient.eligibility_status} />
             </div>
-            <p className="text-xs text-slate-500 font-mono mt-0.5">
-              ID: {patient.patient_uid || `PT-${patient.id}`} • Blood Group: <strong className="text-slate-800">{patient.blood_group}</strong> • Facility: <span className="text-slate-700 font-semibold">{patient.hospital_name || 'Transplant Center'}</span>
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+              <span className="inline-flex items-center gap-1.5">
+                <Hash className="h-3.5 w-3.5" />
+                <span className="font-mono font-medium text-gray-700">{patient.patient_uid || `PT-${patient.id}`}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Droplet className="h-3.5 w-3.5 text-rose-500" />
+                Blood group <span className="font-semibold text-gray-800">{patient.blood_group}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5" />
+                <span className="font-medium text-gray-700">{patient.hospital_name || 'Transplant Center'}</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            onClick={() => checkMutation.mutate()}
+            disabled={checkMutation.isPending}
+            className="btn-secondary"
+          >
+            <ShieldCheck className="h-4 w-4 text-teal-600" />
+            {checkMutation.isPending ? 'Checking…' : 'Re-check eligibility'}
+          </button>
           {!isEligible && (
             <button
               onClick={() => verifyMutation.mutate()}
               disabled={verifyMutation.isPending}
-              className="btn-success text-xs sm:text-sm shadow-xs inline-flex items-center gap-1.5"
+              className="btn-success"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              {verifyMutation.isPending ? 'Certifying...' : 'Certify & Approve Candidate'}
+              <CheckCircle2 className="h-4 w-4" />
+              {verifyMutation.isPending ? 'Certifying…' : 'Certify & approve'}
             </button>
           )}
-          <button
-            onClick={() => checkMutation.mutate()}
-            disabled={checkMutation.isPending}
-            className="btn-secondary text-xs sm:text-sm inline-flex items-center gap-1.5"
-          >
-            <ShieldCheck className="w-4 h-4 text-teal-600" />
-            {checkMutation.isPending ? 'Checking...' : 'Re-check Eligibility'}
-          </button>
         </div>
       </div>
 
-      {/* Verification Banner */}
-      <div className={`p-4 rounded-xl border flex items-start gap-3.5 transition-all ${
-        isEligible
-          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-          : 'bg-amber-50/90 border-amber-200 text-amber-900'
-      }`}>
-        {isEligible ? (
-          <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-        ) : (
-          <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-        )}
-        <div className="text-xs flex-1">
-          <div className="font-bold text-sm flex items-center justify-between">
-            <span>
-              {isEligible
-                ? 'Clinical Status: Verified & Approved for Organ Allocation Matching'
-                : 'Clinical Status: Pending Verification'}
-            </span>
-            <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-              isEligible ? 'bg-emerald-200/80 text-emerald-900' : 'bg-amber-200/80 text-amber-900'
-            }`}>
-              {patient.verification_status || 'PENDING'}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-700">
+      {/* Status banner */}
+      <div
+        className={`flex items-start gap-3 rounded-(--radius-card) border p-4 ${
+          isEligible ? 'border-emerald-200 bg-emerald-50/70' : 'border-amber-200 bg-amber-50/70'
+        }`}
+      >
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            isEligible ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+          }`}
+        >
+          {isEligible ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-semibold ${isEligible ? 'text-emerald-900' : 'text-amber-900'}`}>
+            {isEligible ? 'Verified and active in allocation matching' : 'Pending verification'}
+          </p>
+          <p className={`mt-0.5 text-xs ${isEligible ? 'text-emerald-800/80' : 'text-amber-800/80'}`}>
             {isEligible
-              ? 'Candidate profile has met clinical criteria and is actively evaluated by the National Allocation and Matching Algorithms.'
-              : 'Candidate can be verified by uploading clinical reports below or by clicking the "Certify & Approve Candidate" button above.'}
+              ? 'This patient meets clinical criteria and is included when the matching engine ranks candidates.'
+              : 'Upload the required reports below, or certify the patient manually once clinical review is complete.'}
           </p>
         </div>
+        <span
+          className={`hidden shrink-0 rounded-md px-2 py-0.5 text-2xs font-bold uppercase tracking-wider sm:inline ${
+            isEligible ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+          }`}
+        >
+          {patient.verification_status || 'PENDING'}
+        </span>
       </div>
 
-      {/* Patient Information Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Clinical Demographics & History */}
-        <div className="card lg:col-span-2 space-y-4">
-          <h2 className="text-base font-semibold text-gray-900 pb-3 border-b border-gray-100 flex items-center gap-2">
-            {isDonor ? <Heart className="w-5 h-5 text-rose-500" /> : <Activity className="w-5 h-5 text-blue-500" />}
-            Clinical Data & Profile
-          </h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left column */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Clinical profile */}
+          <section className="card">
+            <h2 className="mb-5 text-base font-bold text-gray-900">Clinical profile</h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-gray-400 font-medium">Age & Gender</span>
-              <p className="font-medium text-gray-800">{patient.age} yrs, {patient.gender}</p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400 font-medium">ABO Blood Group</span>
-              <p className="font-mono font-bold text-gray-800">{patient.blood_group}</p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400 font-medium">Height & Weight</span>
-              <p className="font-medium text-gray-800">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+              <Field label="Age & gender">
+                {patient.age} yrs · {patient.gender}
+              </Field>
+              <Field label="Blood group">
+                <span className="font-mono font-bold">{patient.blood_group}</span>
+              </Field>
+              <Field label="Height / weight">
                 {patient.height_cm ? `${patient.height_cm} cm` : '—'} / {patient.weight_kg ? `${patient.weight_kg} kg` : '—'}
-                {patient.height_cm && patient.weight_kg && (
-                  <span className="ml-1 text-xs text-teal-700 font-semibold">
-                    (BMI: {+(patient.weight_kg / Math.pow(patient.height_cm / 100, 2)).toFixed(1)})
-                  </span>
-                )}
-              </p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-400 font-medium">Verification</span>
-              <p className="font-medium text-gray-800">{patient.verification_status}</p>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-gray-100 space-y-3">
-            <div>
-              <span className="text-xs text-gray-400 font-medium">Clinical Diagnosis / Cause</span>
-              <p className="text-sm font-medium text-gray-800 mt-0.5">{patient.medical_condition || '—'}</p>
-            </div>
+              </Field>
+              <Field label="BMI">{bmi ?? '—'}</Field>
+              <div className="col-span-2 sm:col-span-4">
+                <Field label="Diagnosis / cause">{patient.medical_condition || '—'}</Field>
+              </div>
+            </dl>
 
             {isDonor && patient.donor_profile && (
-              <div className="space-y-3 pt-2">
-                {/* Comorbidities */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${
-                    patient.donor_profile.hypertension
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  }`}>
-                    Hypertension: {patient.donor_profile.hypertension ? 'YES' : 'NONE'}
-                  </span>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${
-                    patient.donor_profile.diabetes
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  }`}>
-                    Diabetes Mellitus: {patient.donor_profile.diabetes ? 'YES' : 'NONE'}
-                  </span>
+              <div className="mt-6 space-y-5 border-t border-gray-100 pt-6">
+                <div className="flex flex-wrap gap-2">
+                  <Flag on={patient.donor_profile.hypertension} label="Hypertension" />
+                  <Flag on={patient.donor_profile.diabetes} label="Diabetes mellitus" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                  <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-                    <span className="font-semibold text-gray-600 block mb-1">Renal History</span>
-                    <p className="text-gray-700">{patient.donor_profile.renal_history || 'No pre-existing renal disease reported'}</p>
-                  </div>
-                  <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-                    <span className="font-semibold text-gray-600 block mb-1">Cardiac History</span>
-                    <p className="text-gray-700">{patient.donor_profile.cardiac_history || 'No prior cardiac events'}</p>
-                  </div>
-                  <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs">
-                    <span className="font-semibold text-gray-600 block mb-1">Infection History</span>
-                    <p className="text-gray-700">{patient.donor_profile.infection_history || 'Serology clean'}</p>
-                  </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <Tile label="Renal history">{patient.donor_profile.renal_history || 'No pre-existing renal disease reported'}</Tile>
+                  <Tile label="Cardiac history">{patient.donor_profile.cardiac_history || 'No prior cardiac events'}</Tile>
+                  <Tile label="Infection history">{patient.donor_profile.infection_history || 'Serology clean'}</Tile>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-xs text-gray-400 font-medium">Infectious Disease Screening</span>
-                    <p className="text-xs text-gray-700 mt-0.5">{patient.donor_profile.infectious_disease_screening || '—'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-400 font-medium">Relevant Lab Test Results</span>
-                    <p className="text-xs text-gray-700 mt-0.5">{patient.donor_profile.relevant_test_results || '—'}</p>
-                  </div>
-                </div>
+                <dl className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <Field label="Infectious disease screening">
+                    {patient.donor_profile.infectious_disease_screening || '—'}
+                  </Field>
+                  <Field label="Relevant lab results">{patient.donor_profile.relevant_test_results || '—'}</Field>
+                </dl>
               </div>
             )}
 
             {!isDonor && patient.receiver_profile && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                  <div>
-                    <span className="text-2xs text-gray-500 font-medium">Required Organ</span>
-                    <div className="mt-1">
-                      <OrganBadge organ={patient.receiver_profile.required_organ} size="sm" />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-2xs text-gray-500 font-medium">Clinical Urgency</span>
-                    <div className="mt-1">
-                      <StatusBadge status={patient.receiver_profile.urgency_level} />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-2xs text-gray-500 font-medium">Listing / Waiting Date</span>
-                    <p className="text-xs font-semibold text-gray-800 mt-1">
-                      {patient.receiver_profile.waiting_start_date
-                        ? new Date(patient.receiver_profile.waiting_start_date).toLocaleDateString()
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-2xs text-gray-500 font-medium">Priority Tier</span>
-                    <p className="text-xs font-semibold text-teal-800 mt-1">
-                      {patient.receiver_profile.special_status || 'Standard'}
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-6 space-y-5 border-t border-gray-100 pt-6">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+                  <Field label="Required organ">
+                    <OrganBadge organ={patient.receiver_profile.required_organ} size="sm" />
+                  </Field>
+                  <Field label="Clinical urgency">
+                    <StatusBadge status={patient.receiver_profile.urgency_level} />
+                  </Field>
+                  <Field label="Listed since">
+                    {patient.receiver_profile.waiting_start_date
+                      ? new Date(patient.receiver_profile.waiting_start_date).toLocaleDateString()
+                      : '—'}
+                  </Field>
+                  <Field label="Priority tier">{patient.receiver_profile.special_status || 'Standard'}</Field>
+                </dl>
 
-                {/* Dialysis & Prior Graft Data */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <span className="text-2xs text-gray-400 font-medium block mb-1">Dialysis Modality</span>
-                    <p className="text-xs font-semibold text-gray-900">{patient.receiver_profile.dialysis_status || 'Not on dialysis'}</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Tile label="Dialysis">
+                    <span className="font-semibold text-gray-900">
+                      {patient.receiver_profile.dialysis_status || 'Not on dialysis'}
+                    </span>
                     {patient.receiver_profile.dialysis_duration_months && (
-                      <span className="text-2xs text-gray-500 mt-0.5 block">
-                        Vintage: {patient.receiver_profile.dialysis_duration_months} months
+                      <span className="mt-0.5 block text-2xs text-gray-500">
+                        {patient.receiver_profile.dialysis_duration_months} months vintage
                       </span>
                     )}
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <span className="text-2xs text-gray-400 font-medium block mb-1">Sensitization (PRA / CPRA)</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-purple-700">CPRA: {patient.receiver_profile.cpra ?? 0}%</span>
-                      <span className="text-2xs text-gray-500">(PRA: {patient.receiver_profile.pra ?? 0}%)</span>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <span className="text-2xs text-gray-400 font-medium block mb-1">Crossmatch & Priority</span>
-                    <p className="text-xs font-semibold text-gray-900">{patient.receiver_profile.crossmatch_result || 'Pending'}</p>
-                    <div className="flex gap-1.5 mt-1">
-                      {patient.receiver_profile.pediatric_status && (
-                        <span className="text-3xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Pediatric</span>
-                      )}
-                      {patient.receiver_profile.prior_living_donor && (
-                        <span className="text-3xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">Prior Donor</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* HLA Typing */}
-                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-2xs text-gray-400 font-medium block mb-0.5">Recipient HLA Typing</span>
-                    <p className="font-mono text-xs text-gray-800">{patient.receiver_profile.hla_typing || 'HLA typing pending'}</p>
-                  </div>
-                  <div>
-                    <span className="text-2xs text-gray-400 font-medium block mb-0.5">Unacceptable HLA Antibodies</span>
-                    <p className="font-mono text-xs text-gray-800">{patient.receiver_profile.hla_antibodies || 'None detected'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Organs Section for Donors */}
-        {isDonor && (
-          <div className="card space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">Donated Organs & Quality</h2>
-              <button
-                onClick={() => setShowAddOrgan(!showAddOrgan)}
-                className="btn-secondary text-xs px-2 py-1 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3 h-3" /> Add
-              </button>
-            </div>
-
-            {showAddOrgan && (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-                <div>
-                  <label className="label text-xs">Organ Type</label>
-                  <select
-                    value={newOrganType}
-                    onChange={(e) => setNewOrganType(e.target.value)}
-                    className="input text-xs"
-                  >
-                    <option value="KIDNEY">Kidney</option>
-                    <option value="LIVER">Liver</option>
-                    <option value="HEART">Heart</option>
-                    <option value="LUNG">Lung</option>
-                    <option value="PANCREAS">Pancreas</option>
-                    <option value="CORNEA">Cornea</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label text-xs">Condition</label>
-                  <input
-                    type="text"
-                    value={newOrganCondition}
-                    onChange={(e) => setNewOrganCondition(e.target.value)}
-                    className="input text-xs"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowAddOrgan(false)}
-                    className="btn-secondary text-xs px-2 py-1"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => organMutation.mutate()}
-                    disabled={organMutation.isPending}
-                    className="btn-primary text-xs px-2 py-1"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {organs.length === 0 ? (
-                <p className="text-xs text-gray-400 py-4 text-center">No organs registered yet.</p>
-              ) : (
-                organs.map((org: any) => (
-                  <div
-                    key={org.id}
-                    className="p-3.5 bg-gray-50/90 rounded-xl border border-gray-200 space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <OrganBadge organ={org.organ_type} size="sm" />
-                        <span className="text-xs font-mono font-bold text-gray-600">{org.organ_uid}</span>
-                      </div>
-                      <StatusBadge status={org.availability_status} />
-                    </div>
-
-                    <p className="text-xs text-gray-700">{org.organ_condition}</p>
-
-                    {/* Kidney Specific Clinical Metrics */}
-                    {org.organ_type === 'KIDNEY' && (
-                      <div className="mt-2 pt-2 border-t border-gray-200 grid grid-cols-2 gap-2 text-2xs">
-                        {org.donor_creatinine && (
-                          <div className="bg-white p-1.5 rounded border border-gray-100">
-                            <span className="text-gray-400 block">Serum Creatinine</span>
-                            <span className="font-semibold text-gray-800">{org.donor_creatinine} mg/dL</span>
-                          </div>
+                  </Tile>
+                  <Tile label="Sensitisation">
+                    <span className="font-semibold text-violet-700">CPRA {patient.receiver_profile.cpra ?? 0}%</span>
+                    <span className="ml-1.5 text-2xs text-gray-500">PRA {patient.receiver_profile.pra ?? 0}%</span>
+                  </Tile>
+                  <Tile label="Crossmatch">
+                    <span className="font-semibold text-gray-900">
+                      {patient.receiver_profile.crossmatch_result || 'Pending'}
+                    </span>
+                    {(patient.receiver_profile.pediatric_status || patient.receiver_profile.prior_living_donor) && (
+                      <span className="mt-1 flex gap-1.5">
+                        {patient.receiver_profile.pediatric_status && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-3xs font-bold text-amber-800">Pediatric</span>
                         )}
-                        {org.kidney_quality && (
-                          <div className="bg-white p-1.5 rounded border border-gray-100">
-                            <span className="text-gray-400 block">Quality</span>
-                            <span className="font-semibold text-teal-700">{org.kidney_quality}</span>
-                          </div>
+                        {patient.receiver_profile.prior_living_donor && (
+                          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-3xs font-bold text-emerald-800">Prior donor</span>
                         )}
-                        {org.preservation_method && (
-                          <div className="col-span-2 bg-white p-1.5 rounded border border-gray-100">
-                            <span className="text-gray-400 block">Preservation Protocol</span>
-                            <span className="font-semibold text-gray-800">{org.preservation_method}</span>
-                          </div>
-                        )}
-                      </div>
+                      </span>
                     )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+                  </Tile>
+                </div>
 
-      {/* Supporting Medical Reports Upload & Evidence */}
-      <div className="card space-y-6">
-        <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <FileCheck2 className="w-5 h-5 text-teal-600" />
-              Supporting Medical Evidence & Reports
-            </h2>
-            <p className="text-xs text-gray-500">
-              Upload PDF or image evidence (Blood Test, Medical Examination) required for eligibility verification
-            </p>
-          </div>
+                <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Field label="HLA typing">
+                    <span className="font-mono text-xs">{patient.receiver_profile.hla_typing || 'HLA typing pending'}</span>
+                  </Field>
+                  <Field label="Unacceptable HLA antibodies">
+                    <span className="font-mono text-xs">{patient.receiver_profile.hla_antibodies || 'None detected'}</span>
+                  </Field>
+                </dl>
+              </div>
+            )}
+          </section>
+
+          {/* Uploaded evidence */}
+          <section className="card">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Medical evidence</h2>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {reports.length} document{reports.length === 1 ? '' : 's'} on file
+                </p>
+              </div>
+            </div>
+
+            {reports.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center">
+                <FileText className="mx-auto h-8 w-8 text-gray-300" />
+                <p className="mt-2 text-sm font-medium text-gray-700">No reports uploaded yet</p>
+                <p className="text-xs text-gray-500">Upload a blood test and a medical examination report to verify this patient.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+                {reports.map((r: any) => (
+                  <li key={r.id} className="flex items-center gap-3 bg-white px-4 py-3 transition-colors hover:bg-gray-50/70">
+                    <span className="icon-tile h-9 w-9 bg-teal-50 text-teal-600">
+                      <FileText className="h-[18px] w-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900">{formatType(r.report_type)}</p>
+                      <p className="truncate text-xs text-gray-500">
+                        {r.original_filename || 'document.pdf'} · {new Date(r.uploaded_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="hidden items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 sm:inline-flex">
+                      <CheckCircle2 className="h-3 w-3" /> Verified
+                    </span>
+                    <button onClick={() => openReport(r)} className="btn-secondary px-3 py-1.5 text-xs">
+                      <Eye className="h-3.5 w-3.5" /> View
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
 
-        {/* Upload Form */}
-        <div className="p-4 bg-gray-50/70 rounded-xl border border-dashed border-gray-300">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="label text-xs">Report Type *</label>
-              <select
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value)}
-                className="input text-xs"
+        {/* Right column (shown first on small screens while verification is outstanding) */}
+        <div className={`space-y-6 ${isEligible ? '' : 'order-first lg:order-none'}`}>
+          {/* Verification checklist + upload */}
+          <section className="card">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">Verification</h2>
+              <span className="text-xs font-semibold text-gray-500">
+                {checklistDone}/{checklist.length} required
+              </span>
+            </div>
+
+            <ul className="mb-5 space-y-2">
+              {checklist.map((c) => (
+                <li
+                  key={c.type}
+                  className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm ${
+                    c.done ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  {c.done ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  ) : (
+                    <Circle className="h-4 w-4 shrink-0 text-gray-300" />
+                  )}
+                  <span className={`flex-1 font-medium ${c.done ? 'text-emerald-900' : 'text-gray-700'}`}>{c.label}</span>
+                  {!c.done && (
+                    <label
+                      htmlFor="report-file"
+                      onClick={() => setReportType(c.type)}
+                      className="cursor-pointer text-xs font-semibold text-teal-600 hover:text-teal-700"
+                    >
+                      Upload
+                    </label>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            <div className="space-y-3 border-t border-gray-100 pt-5">
+              <div>
+                <label className="label" htmlFor="report-type">
+                  Report type
+                </label>
+                <select id="report-type" value={reportType} onChange={(e) => setReportType(e.target.value)} className="input">
+                  {REPORT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label
+                htmlFor="report-file"
+                className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
+                  selectedFile ? 'border-teal-300 bg-teal-50/50' : 'border-gray-200 hover:border-teal-300 hover:bg-gray-50'
+                }`}
               >
-                <option value="BLOOD_TEST">Blood Test Report</option>
-                <option value="MEDICAL_EXAMINATION">Medical Examination Report</option>
-                <option value="INFECTIOUS_DISEASE_SCREENING">Infectious Disease Screening</option>
-                <option value="ORGAN_ASSESSMENT">Organ Assessment Report</option>
-                <option value="COMPATIBILITY_TEST">Compatibility / HLA Report</option>
-                <option value="OTHER">Other Clinical Supporting Document</option>
-              </select>
-            </div>
+                <UploadCloud className={`h-7 w-7 ${selectedFile ? 'text-teal-600' : 'text-gray-400'}`} />
+                {selectedFile ? (
+                  <>
+                    <span className="mt-2 max-w-full truncate text-sm font-semibold text-gray-900">{selectedFile.name}</span>
+                    <span className="text-xs text-gray-500">{(selectedFile.size / 1024).toFixed(0)} KB · click to change</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="mt-2 text-sm font-semibold text-gray-700">Choose a file</span>
+                    <span className="text-xs text-gray-500">PDF, PNG or JPG</span>
+                  </>
+                )}
+                <input
+                  id="report-file"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="sr-only"
+                />
+              </label>
 
-            <div>
-              <label className="label text-xs">Select Document / PDF *</label>
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="input text-xs file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-              />
-            </div>
-
-            <div>
               <button
                 onClick={() => uploadMutation.mutate()}
                 disabled={!selectedFile || uploadMutation.isPending}
-                className="btn-primary w-full text-xs py-2.5 inline-flex items-center justify-center gap-1.5"
+                className="btn-primary w-full"
               >
-                <UploadCloud className="w-4 h-4" />
-                {uploadMutation.isPending ? 'Uploading & Verifying...' : 'Upload & Verify'}
+                <UploadCloud className="h-4 w-4" />
+                {uploadMutation.isPending ? 'Uploading…' : 'Upload & verify'}
               </button>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Uploaded Reports List */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Uploaded Medical Evidence ({reports.length})
-          </h3>
+          {/* Organs (donors) */}
+          {isDonor && (
+            <section className="card">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-bold text-gray-900">Donated organs</h2>
+                <button onClick={() => setShowAddOrgan(!showAddOrgan)} className="btn-secondary px-2.5 py-1 text-xs">
+                  <Plus className="h-3.5 w-3.5" /> Add
+                </button>
+              </div>
 
-          {reports.length === 0 ? (
-            <p className="text-xs text-gray-400 py-4 text-center bg-gray-50 rounded-lg">
-              No reports uploaded yet. Please upload Blood Test and Medical Examination reports.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {reports.map((r: any) => (
-                <div
-                  key={r.id}
-                  className="p-3.5 bg-white rounded-xl border border-gray-200 flex flex-col justify-between shadow-xs hover:border-teal-500 transition-colors"
-                >
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-7 h-7 text-teal-600 shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-gray-900 truncate">
-                        {r.report_type?.replace(/_/g, ' ')}
-                      </div>
-                      <div className="text-xs text-gray-500 truncate mt-0.5 font-mono">
-                        {r.original_filename || 'document.pdf'}
-                      </div>
-                      <div className="text-2xs text-gray-400 mt-1">
-                        Uploaded {new Date(r.uploaded_at).toLocaleDateString()}
-                      </div>
-                    </div>
+              {showAddOrgan && (
+                <div className="mb-4 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <div>
+                    <label className="label">Organ type</label>
+                    <select value={newOrganType} onChange={(e) => setNewOrganType(e.target.value)} className="input">
+                      <option value="KIDNEY">Kidney</option>
+                      <option value="LIVER">Liver</option>
+                      <option value="HEART">Heart</option>
+                      <option value="LUNG">Lung</option>
+                      <option value="PANCREAS">Pancreas</option>
+                      <option value="CORNEA">Cornea</option>
+                    </select>
                   </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-2xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded">
-                      Verified
-                    </span>
+                  <div>
+                    <label className="label">Condition</label>
+                    <input
+                      type="text"
+                      value={newOrganCondition}
+                      onChange={(e) => setNewOrganCondition(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setShowAddOrgan(false)} className="btn-ghost px-3 py-1.5 text-xs">
+                      Cancel
+                    </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          const url = await viewHospitalReportPdf(r.id);
-                          setViewPdfUrl(url);
-                          setViewPdfTitle(`${r.report_type?.replace(/_/g, ' ')} - ${patient.name}`);
-                        } catch {
-                          toast.error('Failed to load PDF preview');
-                        }
-                      }}
-                      className="btn-secondary text-2xs px-2.5 py-1 inline-flex items-center gap-1 text-teal-700 hover:text-teal-800 font-semibold"
+                      onClick={() => organMutation.mutate()}
+                      disabled={organMutation.isPending}
+                      className="btn-primary px-3 py-1.5 text-xs"
                     >
-                      <FileCheck2 className="w-3 h-3" /> View PDF
+                      Save organ
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+
+              {organs.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-gray-200 py-6 text-center text-xs text-gray-400">
+                  No organs registered yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {organs.map((org: any) => (
+                    <div key={org.id} className="space-y-2 rounded-xl border border-gray-200 p-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <OrganBadge organ={org.organ_type} size="sm" />
+                          <span className="font-mono text-2xs font-semibold text-gray-500">{org.organ_uid}</span>
+                        </div>
+                        <StatusBadge status={org.availability_status} />
+                      </div>
+                      <p className="text-xs text-gray-700">{org.organ_condition}</p>
+
+                      {org.organ_type === 'KIDNEY' &&
+                        (org.donor_creatinine || org.kidney_quality || org.preservation_method) && (
+                          <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-2 text-2xs">
+                            {org.donor_creatinine && (
+                              <div>
+                                <span className="block text-gray-400">Creatinine</span>
+                                <span className="font-semibold text-gray-800">{org.donor_creatinine} mg/dL</span>
+                              </div>
+                            )}
+                            {org.kidney_quality && (
+                              <div>
+                                <span className="block text-gray-400">Quality</span>
+                                <span className="font-semibold text-gray-800">{org.kidney_quality}</span>
+                              </div>
+                            )}
+                            {org.preservation_method && (
+                              <div className="col-span-2">
+                                <span className="block text-gray-400">Preservation</span>
+                                <span className="font-semibold text-gray-800">{org.preservation_method}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           )}
         </div>
       </div>
 
-      {/* PDF Document Viewer Modal */}
+      {/* Document viewer */}
       <DocumentModal
         isOpen={!!viewPdfUrl}
         onClose={() => {
@@ -633,9 +638,39 @@ export default function PatientDetail() {
         }}
         title={viewPdfTitle}
         pdfBlobUrl={viewPdfUrl}
-        downloadFilename={`${viewPdfTitle.replace(/\s+/g, '_')}.pdf`}
+        downloadFilename={`${viewPdfTitle.replace(/[^\w]+/g, '_')}.pdf`}
       />
     </div>
   );
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-gray-500">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-gray-900">{children}</dd>
+    </div>
+  );
+}
+
+function Tile({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-xs text-gray-700">
+      <span className="mb-1 block text-2xs font-semibold uppercase tracking-wider text-gray-400">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function Flag({ on, label }: { on?: boolean; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+        on ? 'bg-rose-50 text-rose-700 ring-rose-600/20' : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+      {label}: {on ? 'Yes' : 'None'}
+    </span>
+  );
+}

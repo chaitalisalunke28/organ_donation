@@ -32,22 +32,22 @@ export default function DocumentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200">
+    <div className="fixed inset-0 z-50 bg-gray-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+      <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-gray-900/10">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 bg-teal-800 text-white flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-5 h-5 text-teal-200" />
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="icon-tile h-9 w-9 bg-teal-50 text-teal-600"><FileText className="w-[18px] h-[18px]" /></span>
             <div>
-              <h2 className="font-semibold text-sm sm:text-base leading-tight">{title}</h2>
-              <p className="text-2xs text-teal-200">OrganConnect Medical Evidence & Document Viewer</p>
+              <h2 className="truncate font-semibold text-sm sm:text-base leading-tight text-gray-900">{title}</h2>
+              <p className="text-2xs text-gray-500">Medical evidence viewer</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               onClick={handleOpenNewTab}
-              className="p-1.5 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-xs transition-colors flex items-center gap-1 px-2.5"
+              className="btn-secondary px-2.5 py-1.5 text-xs"
               title="Open in new window"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -56,8 +56,8 @@ export default function DocumentModal({
 
             <button
               onClick={handleDownload}
-              className="p-1.5 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-xs transition-colors flex items-center gap-1 px-2.5"
-              title="Download PDF"
+              className="btn-secondary px-2.5 py-1.5 text-xs"
+              title="Download"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -65,7 +65,7 @@ export default function DocumentModal({
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-teal-700 text-white transition-colors ml-1"
+              className="btn-ghost p-1.5 ml-1"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -84,7 +84,7 @@ export default function DocumentModal({
 
         {/* Modal Footer */}
         <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
-          <span>Official Organ Allocation Registry Document</span>
+          <span>OrganConnect registry document</span>
           <button
             onClick={onClose}
             className="btn-secondary text-xs px-3 py-1"

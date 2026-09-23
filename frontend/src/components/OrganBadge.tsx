@@ -52,9 +52,9 @@ const getOrganStyle = (organ: string, iconSize: number): OrganStyle => {
     case 'LUNG':
     case 'LUNGS':
       return {
-        bg: 'bg-teal-50',
-        text: 'text-teal-700',
-        border: 'border-teal-200',
+        bg: 'bg-cyan-50',
+        text: 'text-cyan-700',
+        border: 'border-cyan-200',
         icon: <Wind size={iconSize} />,
         label: organ?.toUpperCase() === 'LUNGS' ? 'Lungs' : 'Lung',
       };

@@ -7,14 +7,28 @@ import {
   XCircle,
   Users,
   HeartPulse,
-  UserCheck,
-  UserMinus,
   Plus,
   ArrowRight,
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
 import { getAdminDashboard } from '../../api';
+import PageHeader from '../../components/PageHeader';
+import StatCard from '../../components/StatCard';
+
+function RateBar({ rate, label }: { rate: number | null; label: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${rate ?? 0}%` }} />
+      </div>
+      <div className="flex justify-between">
+        <span>{label}</span>
+        <span className="font-semibold text-gray-700">{rate !== null ? `${rate}%` : '—'}</span>
+      </div>
+    </div>
+  );
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface RecentHospital {
@@ -39,30 +53,6 @@ interface DashboardStats {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-interface StatCardProps {
-  icon: React.ReactNode;
-  value: number | string;
-  label: string;
-  iconColor: string;
-  iconBg: string;
-  sub?: string;
-}
-
-function StatCard({ icon, value, label, iconColor, iconBg, sub }: StatCardProps) {
-  return (
-    <div className="stat-card flex items-start gap-4">
-      <div className={`${iconBg} rounded-xl p-3 shrink-0`}>
-        <div className={iconColor}>{icon}</div>
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold text-gray-900 leading-tight">{value}</p>
-        <p className="text-sm text-gray-500 mt-0.5">{label}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
 function HospitalStatusBadge({ status }: { status: string }) {
   if (status === 'ACTIVE') {
     return (
@@ -123,60 +113,6 @@ export default function AdminDashboard() {
 
   const stats = data!;
 
-  const statCards: StatCardProps[] = [
-    {
-      icon: <Building2 className="w-5 h-5" />,
-      value: stats.total_hospitals ?? 0,
-      label: 'Total Hospitals',
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-50',
-    },
-    {
-      icon: <CheckCircle className="w-5 h-5" />,
-      value: stats.active_hospitals ?? 0,
-      label: 'Active Hospitals',
-      iconColor: 'text-green-600',
-      iconBg: 'bg-green-50',
-    },
-    {
-      icon: <XCircle className="w-5 h-5" />,
-      value: stats.inactive_hospitals ?? 0,
-      label: 'Inactive Hospitals',
-      iconColor: 'text-red-600',
-      iconBg: 'bg-red-50',
-    },
-    {
-      icon: <Users className="w-5 h-5" />,
-      value: stats.total_donors ?? 0,
-      label: 'Total Donors',
-      iconColor: 'text-purple-600',
-      iconBg: 'bg-purple-50',
-    },
-    {
-      icon: <HeartPulse className="w-5 h-5" />,
-      value: stats.total_receivers ?? 0,
-      label: 'Total Receivers',
-      iconColor: 'text-pink-600',
-      iconBg: 'bg-pink-50',
-    },
-    {
-      icon: <UserCheck className="w-5 h-5" />,
-      value: stats.eligible_donors ?? 0,
-      label: 'Eligible Donors',
-      iconColor: 'text-teal-600',
-      iconBg: 'bg-teal-50',
-      sub: `of ${stats.total_donors ?? 0} total donors`,
-    },
-    {
-      icon: <UserMinus className="w-5 h-5" />,
-      value: stats.eligible_receivers ?? 0,
-      label: 'Eligible Receivers',
-      iconColor: 'text-orange-600',
-      iconBg: 'bg-orange-50',
-      sub: `of ${stats.total_receivers ?? 0} total receivers`,
-    },
-  ];
-
   const donorEligibilityRate =
     stats.total_donors > 0
       ? Math.round((stats.eligible_donors / stats.total_donors) * 100)
@@ -189,25 +125,55 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            System-wide overview — hospitals, donors &amp; receivers
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg">
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>Auto-refreshes every 60 s</span>
-        </div>
-      </div>
+      <PageHeader
+        title="Network overview"
+        description="Hospitals, donors and receivers across the transplant network."
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-2xs font-semibold text-gray-600">
+            <TrendingUp className="h-3 w-3" /> Refreshes every 60s
+          </span>
+        }
+        actions={
+          <Link to="/admin/hospitals/add" className="btn-primary">
+            <Plus className="h-4 w-4" /> Register hospital
+          </Link>
+        }
+      />
 
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <StatCard key={card.label} {...card} />
-        ))}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          label="Hospitals"
+          value={stats.total_hospitals ?? 0}
+          icon={<Building2 className="h-[18px] w-[18px]" />}
+          tone="brand"
+          to="/admin/hospitals"
+          footer={
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {stats.active_hospitals ?? 0} active
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
+                {stats.inactive_hospitals ?? 0} inactive
+              </span>
+            </div>
+          }
+        />
+        <StatCard
+          label="Donors"
+          value={stats.total_donors ?? 0}
+          icon={<HeartPulse className="h-[18px] w-[18px]" />}
+          tone="rose"
+          footer={<RateBar rate={donorEligibilityRate} label={`${stats.eligible_donors ?? 0} eligible`} />}
+        />
+        <StatCard
+          label="Receivers"
+          value={stats.total_receivers ?? 0}
+          icon={<Users className="h-[18px] w-[18px]" />}
+          tone="violet"
+          footer={<RateBar rate={receiverEligibilityRate} label={`${stats.eligible_receivers ?? 0} eligible`} />}
+        />
       </div>
 
       {/* Lower Section */}
@@ -215,13 +181,10 @@ export default function AdminDashboard() {
         {/* Recent Hospitals Table */}
         <div className="lg:col-span-2 card p-0 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              Recent Hospitals
-            </h2>
+            <h2 className="text-base font-bold text-gray-900">Recently registered hospitals</h2>
             <Link
               to="/admin/hospitals"
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700"
             >
               View all <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -246,7 +209,7 @@ export default function AdminDashboard() {
                       <td className="table-cell font-medium text-gray-900">
                         <Link
                           to={`/admin/hospitals/${h.id}`}
-                          className="hover:text-blue-600 transition-colors"
+                          className="hover:text-teal-600 transition-colors"
                         >
                           {h.name}
                         </Link>
@@ -269,7 +232,7 @@ export default function AdminDashboard() {
               <p className="text-sm">No hospitals registered yet.</p>
               <Link
                 to="/admin/hospitals/add"
-                className="mt-3 text-sm text-blue-600 hover:underline"
+                className="mt-3 text-sm font-semibold text-teal-600 hover:underline"
               >
                 Add the first hospital
               </Link>
@@ -281,78 +244,37 @@ export default function AdminDashboard() {
         <div className="space-y-4">
           {/* Quick Actions Card */}
           <div className="card space-y-4">
-            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-teal-600" />
-              Quick Actions
-            </h2>
+            <h2 className="text-base font-bold text-gray-900">Quick actions</h2>
 
             <Link
               to="/admin/hospitals/add"
-              className="flex items-center gap-3 p-3 rounded-lg border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-xl border border-teal-100 bg-teal-50/60 hover:bg-teal-50 transition-colors group"
             >
-              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center shrink-0">
                 <Plus className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-blue-800">Add Hospital</p>
-                <p className="text-xs text-blue-600">Register a new hospital</p>
+                <p className="text-sm font-semibold text-gray-900">Add hospital</p>
+                <p className="text-xs text-gray-500">Register a new transplant centre</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-blue-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-4 h-4 text-teal-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             <Link
               to="/admin/hospitals"
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
             >
-              <div className="w-9 h-9 rounded-lg bg-gray-600 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-gray-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-800">Manage Hospitals</p>
+                <p className="text-sm font-semibold text-gray-900">Manage hospitals</p>
                 <p className="text-xs text-gray-500">View, activate or deactivate</p>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
-          {/* Eligibility Summary */}
-          <div className="card space-y-3">
-            <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wider text-gray-500">
-              Eligibility Rates
-            </h2>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Donor eligibility</span>
-                <span className="font-semibold text-teal-700">
-                  {donorEligibilityRate !== null ? `${donorEligibilityRate}%` : '—'}
-                </span>
-              </div>
-              {donorEligibilityRate !== null && (
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className="bg-teal-500 h-1.5 rounded-full"
-                    style={{ width: `${donorEligibilityRate}%` }}
-                  />
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Receiver eligibility</span>
-                <span className="font-semibold text-orange-700">
-                  {receiverEligibilityRate !== null ? `${receiverEligibilityRate}%` : '—'}
-                </span>
-              </div>
-              {receiverEligibilityRate !== null && (
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className="bg-orange-500 h-1.5 rounded-full"
-                    style={{ width: `${receiverEligibilityRate}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

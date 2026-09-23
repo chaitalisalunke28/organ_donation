@@ -3,16 +3,51 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Heart,
-  Activity,
+  Users,
   GitMerge,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   Inbox,
   ArrowRight,
+  Send,
+  Calculator,
+  PackageX,
+  Info,
 } from 'lucide-react';
 import { getCoordinatorDashboard } from '../../api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import PageHeader from '../../components/PageHeader';
+import StatCard from '../../components/StatCard';
+
+const LIFECYCLE = [
+  {
+    step: 1,
+    to: '/coordinator/matching',
+    title: 'Run matching',
+    text: 'ABO hard filter, then priority scoring',
+    icon: <GitMerge className="h-4 w-4" />,
+  },
+  {
+    step: 2,
+    to: '/coordinator/offers',
+    title: 'Send offers',
+    text: 'Sequential offers to one hospital at a time',
+    icon: <Inbox className="h-4 w-4" />,
+  },
+  {
+    step: 3,
+    to: '/coordinator/allocations',
+    title: 'Confirm allocation',
+    text: 'Review accepted offers and finalise',
+    icon: <CheckCircle2 className="h-4 w-4" />,
+  },
+  {
+    step: 4,
+    to: '/coordinator/completed',
+    title: 'Complete transplant',
+    text: 'Record completion and dispatch data',
+    icon: <Heart className="h-4 w-4" />,
+  },
+];
 
 export default function CoordinatorDashboard() {
   const { data, isLoading } = useQuery({
@@ -35,137 +70,140 @@ export default function CoordinatorDashboard() {
     unallocated_organs = 0,
   } = data || {};
 
+  const secondary = [
+    {
+      label: 'Organs currently offered',
+      value: offered_organs,
+      hint: 'Locked while an offer is open',
+      icon: <Send className="h-4 w-4" />,
+    },
+    {
+      label: 'Calculated matches',
+      value: active_matches,
+      hint: 'Ranked donor–recipient pairs',
+      icon: <Calculator className="h-4 w-4" />,
+    },
+    {
+      label: 'Unallocated organs',
+      value: unallocated_organs,
+      hint: 'All eligible candidates exhausted',
+      icon: <PackageX className="h-4 w-4" />,
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transplant Coordinator Central Command</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Centralized organ allocation matching engine, sequential priority offers, and multi-center transplant coordination
-          </p>
-        </div>
-        <Link to="/coordinator/matching" className="btn-primary text-sm inline-flex items-center gap-2">
-          <GitMerge className="w-4 h-4" /> Start Organ Matching
-        </Link>
+      <PageHeader
+        title="Coordination overview"
+        description="Match available organs to eligible recipients across the network, manage sequential offers and track every allocation to completion."
+        eyebrow={
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-2xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Live · refreshes every 10s
+          </span>
+        }
+        actions={
+          <Link to="/coordinator/matching" className="btn-primary">
+            <GitMerge className="h-4 w-4" /> Start organ matching
+          </Link>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Available organs"
+          value={available_organs}
+          icon={<Heart className="h-[18px] w-[18px]" />}
+          tone="rose"
+          to="/coordinator/organs"
+          footer="Ready for matching"
+        />
+        <StatCard
+          label="Eligible receivers"
+          value={eligible_receivers}
+          icon={<Users className="h-[18px] w-[18px]" />}
+          tone="brand"
+          to="/coordinator/receivers"
+          footer="Active on the waiting list"
+        />
+        <StatCard
+          label="Pending offers"
+          value={pending_offers}
+          icon={<Inbox className="h-[18px] w-[18px]" />}
+          tone="amber"
+          to="/coordinator/offers"
+          footer={pending_offers > 0 ? 'Awaiting a hospital reply' : 'No offers outstanding'}
+        />
+        <StatCard
+          label="Completed transplants"
+          value={completed_allocations}
+          icon={<CheckCircle2 className="h-[18px] w-[18px]" />}
+          tone="green"
+          to="/coordinator/completed"
+          footer="Successfully allocated"
+        />
       </div>
 
-      {/* Academic Disclaimer Notice */}
-      <div className="p-4 bg-teal-50/80 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-start gap-3">
-        <Heart className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold">Academic Decision-Support Prototype:</span> This system computes prioritized compatibility rankings using an academic multi-factor scoring model (ABO compatibility hard filter + Urgency + Waiting Time). Final transplant allocation is authorized exclusively by the certified clinical coordinator.
-        </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Lifecycle */}
+        <section className="card lg:col-span-2">
+          <h2 className="text-base font-bold text-gray-900">Allocation lifecycle</h2>
+          <p className="mt-0.5 text-xs text-gray-500">Each organ moves through these stages in order</p>
+
+          <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {LIFECYCLE.map((s, i) => (
+              <li key={s.step} className="relative">
+                <Link
+                  to={s.to}
+                  className="group flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-teal-300 hover:shadow-raised"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
+                      {s.icon}
+                    </span>
+                    <span className="font-mono text-2xs font-semibold text-gray-400">0{s.step}</span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-gray-900">{s.title}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-gray-500">{s.text}</p>
+                </Link>
+                {i < LIFECYCLE.length - 1 && (
+                  <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden h-4 w-4 -translate-y-1/2 rounded-full bg-white text-gray-300 xl:block" />
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Pipeline status */}
+        <section className="card">
+          <h2 className="text-base font-bold text-gray-900">Pipeline</h2>
+          <ul className="mt-4 space-y-1">
+            {secondary.map((m) => (
+              <li key={m.label} className="flex items-center gap-3 rounded-lg px-1 py-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+                  {m.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900">{m.label}</p>
+                  <p className="text-xs text-gray-500">{m.hint}</p>
+                </div>
+                <span className="font-display text-xl font-bold text-gray-950">{m.value}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
 
-      {/* Primary KPI Cards */}
-      <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          Cross-Hospital Pool Metrics
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card border-l-4 border-l-emerald-500">
-            <div className="flex items-center justify-between text-gray-500 mb-1">
-              <span className="text-xs font-medium uppercase">Available Organs</span>
-              <Heart className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{available_organs}</div>
-            <div className="text-xs text-green-600 font-medium mt-1">Ready for matching</div>
-          </div>
-
-          <div className="stat-card border-l-4 border-l-blue-500">
-            <div className="flex items-center justify-between text-gray-500 mb-1">
-              <span className="text-xs font-medium uppercase">Eligible Receivers</span>
-              <Activity className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{eligible_receivers}</div>
-            <div className="text-xs text-blue-600 font-medium mt-1">Active on waiting list</div>
-          </div>
-
-          <div className="stat-card border-l-4 border-l-orange-500">
-            <div className="flex items-center justify-between text-gray-500 mb-1">
-              <span className="text-xs font-medium uppercase">Pending Offers</span>
-              <Inbox className="w-4 h-4 text-orange-500" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{pending_offers}</div>
-            <div className="text-xs text-orange-600 font-medium mt-1">Awaiting hospital reply</div>
-          </div>
-
-          <div className="stat-card border-l-4 border-l-purple-500">
-            <div className="flex items-center justify-between text-gray-500 mb-1">
-              <span className="text-xs font-medium uppercase">Completed Transplants</span>
-              <CheckCircle2 className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{completed_allocations}</div>
-            <div className="text-xs text-purple-600 font-medium mt-1">Successfully allocated</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-5 border-l-4 border-l-cyan-500">
-          <div className="text-xs font-medium uppercase text-gray-400">Organs Currently Offered</div>
-          <div className="text-xl font-bold text-gray-900 mt-1">{offered_organs}</div>
-          <p className="text-xs text-gray-500 mt-1">Sequential offer locking enabled</p>
-        </div>
-
-        <div className="card p-5 border-l-4 border-l-indigo-500">
-          <div className="text-xs font-medium uppercase text-gray-400">Calculated Matches</div>
-          <div className="text-xl font-bold text-gray-900 mt-1">{active_matches}</div>
-          <p className="text-xs text-gray-500 mt-1">Priority list pairs computed</p>
-        </div>
-
-        <div className="card p-5 border-l-4 border-l-rose-500">
-          <div className="text-xs font-medium uppercase text-gray-400">Unallocated Organs</div>
-          <div className="text-xl font-bold text-gray-900 mt-1">{unallocated_organs}</div>
-          <p className="text-xs text-gray-500 mt-1">All eligible candidates exhausted</p>
-        </div>
-      </div>
-
-      {/* Workflow Navigation shortcuts */}
-      <div className="card space-y-4">
-        <h2 className="text-base font-semibold text-gray-900 pb-3 border-b border-gray-100">
-          Transplant Allocation Lifecycle Shortcuts
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link
-            to="/coordinator/matching"
-            className="p-4 rounded-xl bg-teal-50/70 border border-teal-200 hover:bg-teal-100/70 transition-colors"
-          >
-            <GitMerge className="w-5 h-5 text-teal-700 mb-2" />
-            <div className="font-semibold text-sm text-gray-900">1. Run Matching</div>
-            <p className="text-2xs text-gray-600 mt-1">ABO hard filters + Priority scoring</p>
-          </Link>
-
-          <Link
-            to="/coordinator/offers"
-            className="p-4 rounded-xl bg-orange-50/70 border border-orange-200 hover:bg-orange-100/70 transition-colors"
-          >
-            <Inbox className="w-5 h-5 text-orange-700 mb-2" />
-            <div className="font-semibold text-sm text-gray-900">2. Active Offers</div>
-            <p className="text-2xs text-gray-600 mt-1">Sequential single-hospital offers</p>
-          </Link>
-
-          <Link
-            to="/coordinator/allocations"
-            className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 hover:bg-purple-100/70 transition-colors"
-          >
-            <CheckCircle2 className="w-5 h-5 text-purple-700 mb-2" />
-            <div className="font-semibold text-sm text-gray-900">3. Confirm Allocation</div>
-            <p className="text-2xs text-gray-600 mt-1">Review accepted offers & finalize</p>
-          </Link>
-
-          <Link
-            to="/coordinator/completed"
-            className="p-4 rounded-xl bg-green-50/70 border border-green-200 hover:bg-green-100/70 transition-colors"
-          >
-            <Heart className="w-5 h-5 text-green-700 mb-2" />
-            <div className="font-semibold text-sm text-gray-900">4. Complete Transplant</div>
-            <p className="text-2xs text-gray-600 mt-1">Final completion & data dispatch</p>
-          </Link>
-        </div>
+      <div className="flex gap-3 rounded-(--radius-card) border border-gray-200 bg-white p-4 text-xs leading-relaxed text-gray-600">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
+        <p>
+          <span className="font-semibold text-gray-900">Decision support only.</span> Rankings come from an academic
+          multi-factor model (ABO compatibility hard filter, urgency and waiting time). Final allocation is authorised
+          by the certified clinical coordinator.
+        </p>
       </div>
     </div>
   );
