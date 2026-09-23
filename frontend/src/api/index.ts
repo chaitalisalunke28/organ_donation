@@ -152,13 +152,15 @@ export const getCoordinatorNotifications = () => api.get('/coordinator/notificat
 // ── Document & PDF Fetch Helpers ─────────────────────────────────────────────
 export const viewHospitalReportPdf = async (reportId: number) => {
   const res = await api.get(`/hospital/reports/${reportId}/view`, { responseType: 'blob' });
-  const blob = new Blob([res.data], { type: 'application/pdf' });
+  // Uploaded evidence may be an image, so keep the type the server reports
+  const blob = new Blob([res.data], { type: String(res.headers['content-type'] || 'application/pdf') });
   return URL.createObjectURL(blob);
 };
 
 export const viewCoordinatorReportPdf = async (reportId: number) => {
   const res = await api.get(`/coordinator/reports/${reportId}/view`, { responseType: 'blob' });
-  const blob = new Blob([res.data], { type: 'application/pdf' });
+  // Uploaded evidence may be an image, so keep the type the server reports
+  const blob = new Blob([res.data], { type: String(res.headers['content-type'] || 'application/pdf') });
   return URL.createObjectURL(blob);
 };
 

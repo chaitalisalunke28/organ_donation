@@ -1,5 +1,6 @@
 import os
 import uuid
+import mimetypes
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ from app.models.patient import Patient, DonorProfile, ReceiverProfile
 from app.models.organ import Organ
 from app.models.allocation import MedicalReport, AllocationOffer, Allocation, Notification
 from app.models.enums import (UserRole, PatientType, EligibilityStatus, OrganType,
-                               OrganAvailabilityStatus, OfferStatus, AllocationStatus)
+                               OrganAvailabilityStatus, OfferStatus, AllocationStatus, ReportType)
 from app.schemas.patient import PatientCreate, PatientOut, OrganCreate, OrganOut
 from app.core.security import require_role
 from app.core.config import settings
@@ -712,10 +713,12 @@ def view_medical_report(report_id: int, db: Session = Depends(get_db), current_u
     if not patient:
         raise HTTPException(status_code=404, detail="Associated patient not found")
 
+    media_type = "application/pdf"
     # If physical file exists on disk and is a valid file, read it
     if os.path.exists(report.file_path) and os.path.getsize(report.file_path) > 100:
         with open(report.file_path, "rb") as f:
             content = f.read()
+        media_type = mimetypes.guess_type(report.file_path)[0] or "application/pdf"
     else:
         # Generate genuine PDF report on the fly
         hospital_name = patient.hospital.name if patient.hospital else "Accredited Medical Center"
@@ -730,7 +733,7 @@ def view_medical_report(report_id: int, db: Session = Depends(get_db), current_u
 
     return Response(
         content=content,
-        media_type="application/pdf",
+        media_type=media_type,
         headers={
             "Content-Disposition": f"inline; filename=Report_{report.report_type}_{patient.patient_uid or patient.id}.pdf"
         }

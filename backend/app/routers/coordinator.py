@@ -862,6 +862,7 @@ def coordinator_notifications(db: Session = Depends(get_db), current_user=Depend
 @router.get("/reports/{report_id}/pdf")
 def view_medical_report_coord(report_id: int, db: Session = Depends(get_db), current_user=Depends(require_coord)):
     import os
+    import mimetypes
     from fastapi.responses import Response
     from app.models.allocation import MedicalReport
     from app.services.pdf_service import generate_sample_medical_report_pdf
@@ -874,9 +875,11 @@ def view_medical_report_coord(report_id: int, db: Session = Depends(get_db), cur
     if not patient:
         raise HTTPException(status_code=404, detail="Associated patient not found")
 
+    media_type = "application/pdf"
     if os.path.exists(report.file_path) and os.path.getsize(report.file_path) > 100:
         with open(report.file_path, "rb") as f:
             content = f.read()
+        media_type = mimetypes.guess_type(report.file_path)[0] or "application/pdf"
     else:
         hospital_name = patient.hospital.name if patient.hospital else "Accredited Medical Center"
         bg = patient.blood_group.value if hasattr(patient.blood_group, 'value') else patient.blood_group
@@ -890,7 +893,7 @@ def view_medical_report_coord(report_id: int, db: Session = Depends(get_db), cur
 
     return Response(
         content=content,
-        media_type="application/pdf",
+        media_type=media_type,
         headers={
             "Content-Disposition": f"inline; filename=Report_{report.report_type}_{patient.patient_uid or patient.id}.pdf"
         }
